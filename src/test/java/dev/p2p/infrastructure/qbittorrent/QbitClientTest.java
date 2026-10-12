@@ -80,6 +80,35 @@ class QbitClientTest {
     }
 
     @Test
+    void acceptsJsonResultFromRecentQbittorrentVersions() throws Exception {
+        jackett.stubFor(get(urlEqualTo("/dl/dontorrent/file.torrent"))
+            .willReturn(aResponse().withBody("d3:foo3:bare")));
+        server.stubFor(post(urlEqualTo("/api/v2/auth/login"))
+            .willReturn(aResponse().withStatus(204).withHeader("Set-Cookie", "SID=session")));
+        server.stubFor(post(urlEqualTo("/api/v2/torrents/add"))
+            .withHeader("Cookie", equalTo("SID=session"))
+            .willReturn(aResponse().withHeader("Content-Type", "application/json").withBody("""
+                {"added_torrent_ids":["abc"],"failure_count":0,"pending_count":0,"success_count":1}
+                """)));
+
+        client.addTorrentFile(jackett.baseUrl() + "/dl/dontorrent/file.torrent");
+
+        server.verify(postRequestedFor(urlEqualTo("/api/v2/torrents/add")));
+    }
+
+    @Test
+    void rejectsFailedJsonResultFromQbittorrent() {
+        server.stubFor(post(urlEqualTo("/api/v2/auth/login"))
+            .willReturn(aResponse().withStatus(204).withHeader("Set-Cookie", "SID=session")));
+        server.stubFor(post(urlEqualTo("/api/v2/torrents/add"))
+            .willReturn(aResponse().withHeader("Content-Type", "application/json").withBody("""
+                {"failure_count":1,"success_count":0}
+                """)));
+
+        assertThrows(IllegalStateException.class, () -> client.addMagnet("magnet:?xt=urn:btih:abc"));
+    }
+
+    @Test
     void downloadsJackettTorrentAndUploadsItToQbittorrent() throws Exception {
         jackett.stubFor(get(urlEqualTo("/dl/dontorrent/file.torrent"))
             .willReturn(aResponse().withHeader("Content-Type", "application/x-bittorrent").withBody("d3:foo3:bare")));

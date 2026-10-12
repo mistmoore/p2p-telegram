@@ -8,6 +8,7 @@ import dev.p2p.domain.DownloadStatus;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import java.net.URI;
+import java.net.http.HttpResponse;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -28,14 +29,25 @@ public class QbitClient implements dev.p2p.application.port.out.TorrentDownloadP
 
     private String login() throws Exception {
         var response = http.post(configuration.qbitUrl() + "/api/v2/auth/login", Map.of("username", configuration.qbitUser(), "password", configuration.qbitPassword()), null);
-        if (response.statusCode() != 204 && !response.body().trim().equals("Ok.")) throw new IllegalStateException("Login qBittorrent rechazado");
+        if (!accepted(response)) throw new IllegalStateException("Login qBittorrent rechazado");
         return response.headers().firstValue("set-cookie").orElseThrow().split(";", 2)[0];
+    }
+
+    private boolean accepted(HttpResponse<String> response) throws Exception {
+        String body = response.body() == null ? "" : response.body().trim();
+        if (body.isEmpty() || body.equalsIgnoreCase("Ok.")) return true;
+        try {
+            JsonNode payload = mapper.readTree(body);
+            return payload.isObject() && payload.path("success_count").asInt(0) > 0;
+        } catch (com.fasterxml.jackson.core.JsonProcessingException ignored) {
+            return false;
+        }
     }
 
     @Override
     public void addMagnet(String magnetLink) throws Exception {
         var response = http.post(configuration.qbitUrl() + "/api/v2/torrents/add", Map.of("urls", magnetLink), login());
-        if (!response.body().trim().equalsIgnoreCase("Ok.")) throw new IllegalStateException("qBittorrent rechazó el magnet link");
+        if (!accepted(response)) throw new IllegalStateException("qBittorrent rechazó el magnet link");
     }
 
     @Override
@@ -44,7 +56,7 @@ public class QbitClient implements dev.p2p.application.port.out.TorrentDownloadP
         var torrent = http.getBytes(torrentUrl).body();
         if (torrent.length == 0 || torrent.length > MAX_TORRENT_FILE_SIZE) throw new IllegalArgumentException("El archivo torrent tiene un tamaño no válido");
         var response = http.postMultipart(configuration.qbitUrl() + "/api/v2/torrents/add", "torrents", "download.torrent", torrent, "application/x-bittorrent", login());
-        if (!response.body().trim().equalsIgnoreCase("Ok.")) throw new IllegalStateException("qBittorrent rechazó el archivo torrent");
+        if (!accepted(response)) throw new IllegalStateException("qBittorrent rechazó el archivo torrent");
     }
 
     @Override
