@@ -4,7 +4,7 @@
 
 1. Implementar `/descargas` consultando qBittorrent y mostrar progreso, estado, velocidad y ETA. En curso.
 2. Clasificar errores HTTP, hacer configurables los timeouts y aplicar backoff para fallos transitorios. Completado.
-3. Persistir las selecciones de busqueda con TTL.
+3. Persistir las selecciones de busqueda con TTL. Completado.
 4. Reconciliar descargas ambiguas comprobando el infohash en qBittorrent tras un reinicio.
 5. Crear Docker Compose con red privada, volumenes y healthchecks.
 

@@ -6,6 +6,7 @@ import dev.p2p.application.DownloadTorrent;
 import dev.p2p.application.ListDownloads;
 import dev.p2p.application.SearchTorrents;
 import dev.p2p.application.port.out.TelegramUpdateStatePort;
+import dev.p2p.application.port.out.SearchSelectionPort;
 import dev.p2p.domain.TorrentResult;
 import dev.p2p.infrastructure.config.ApplicationConfiguration;
 import dev.p2p.infrastructure.http.HttpGateway;
@@ -13,7 +14,6 @@ import io.quarkus.scheduler.Scheduled;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import java.time.Duration;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -29,11 +29,11 @@ public class TelegramBot {
     private final ListDownloads listDownloads;
     private final ApplicationConfiguration configuration;
     private final TelegramUpdateStatePort updateState;
+    private final SearchSelectionPort searchSelection;
     private long offset;
-    private final Map<Long, List<TorrentResult>> selections = new HashMap<>();
 
     @Inject
-    public TelegramBot(HttpGateway http, ObjectMapper mapper, SearchTorrents searchTorrents, DownloadTorrent downloadTorrent, ListDownloads listDownloads, ApplicationConfiguration configuration, TelegramUpdateStatePort updateState) {
+    public TelegramBot(HttpGateway http, ObjectMapper mapper, SearchTorrents searchTorrents, DownloadTorrent downloadTorrent, ListDownloads listDownloads, ApplicationConfiguration configuration, TelegramUpdateStatePort updateState, SearchSelectionPort searchSelection) {
         this.http = http;
         this.mapper = mapper;
         this.searchTorrents = searchTorrents;
@@ -41,6 +41,7 @@ public class TelegramBot {
         this.listDownloads = listDownloads;
         this.configuration = configuration;
         this.updateState = updateState;
+        this.searchSelection = searchSelection;
         this.offset = updateState.nextOffset();
     }
 
@@ -96,7 +97,7 @@ public class TelegramBot {
                 return;
             }
             var results = searchTorrents.search(query);
-            selections.put(chat, results);
+            searchSelection.saveSelection(chat, results);
             if (results.isEmpty()) {
                 send(chat, "Sin resultados.");
                 return;
@@ -106,7 +107,7 @@ public class TelegramBot {
             send(chat, text.substring(0, Math.min(text.length(), 4096)));
         } else if (input.matches("/descargar \\d+")) {
             int index = Integer.parseInt(input.substring(11).trim()) - 1;
-            var results = selections.getOrDefault(chat, List.of());
+            var results = searchSelection.loadSelection(chat);
             if (index < 0 || index >= results.size()) {
                 send(chat, "Número inválido. Usa /buscar primero.");
                 return;

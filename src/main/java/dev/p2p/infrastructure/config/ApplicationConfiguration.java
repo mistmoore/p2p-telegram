@@ -17,6 +17,7 @@ public class ApplicationConfiguration {
     private final String qbitUser;
     private final String qbitPassword;
     private final String stateDatabaseUrl;
+    private final long selectionTtlSeconds;
 
     @Inject
     public ApplicationConfiguration(
@@ -27,8 +28,10 @@ public class ApplicationConfiguration {
         @ConfigProperty(name = "app.qbit.url", defaultValue = "http://localhost:8081") String qbitUrl,
         @ConfigProperty(name = "app.qbit.user", defaultValue = "admin") String qbitUser,
         @ConfigProperty(name = "app.qbit.password", defaultValue = "") String qbitPassword,
-        @ConfigProperty(name = "app.state.db-url", defaultValue = "jdbc:sqlite:p2p-telegram.db") String stateDatabaseUrl) {
+        @ConfigProperty(name = "app.state.db-url", defaultValue = "jdbc:sqlite:p2p-telegram.db") String stateDatabaseUrl,
+        @ConfigProperty(name = "app.selection.ttl-seconds", defaultValue = "3600") long selectionTtlSeconds) {
         validate(telegramToken, telegramAllowedUser, jackettUrl, jackettApiKey, qbitUrl, qbitUser, qbitPassword);
+        if (selectionTtlSeconds <= 0) throw new IllegalStateException("SELECTION_TTL_SECONDS debe ser positivo");
         this.telegramToken = telegramToken;
         this.telegramAllowedUser = telegramAllowedUser;
         this.jackettUrl = jackettUrl;
@@ -37,10 +40,11 @@ public class ApplicationConfiguration {
         this.qbitUser = qbitUser;
         this.qbitPassword = qbitPassword;
         this.stateDatabaseUrl = stateDatabaseUrl;
+        this.selectionTtlSeconds = selectionTtlSeconds;
     }
 
     public ApplicationConfiguration(String telegramToken, long telegramAllowedUser, String jackettUrl, String jackettApiKey, String qbitUrl, String qbitUser, String qbitPassword) {
-        this(telegramToken, telegramAllowedUser, jackettUrl, jackettApiKey, qbitUrl, qbitUser, qbitPassword, "jdbc:sqlite::memory:");
+        this(telegramToken, telegramAllowedUser, jackettUrl, jackettApiKey, qbitUrl, qbitUser, qbitPassword, "jdbc:sqlite::memory:", 3600);
     }
 
     static void validate(String token, long allowedUser, String jackettUrl, String jackettKey, String qbitUrl, String qbitUser, String qbitPassword) {
@@ -68,4 +72,5 @@ public class ApplicationConfiguration {
     public String qbitUser() { return qbitUser; }
     public String qbitPassword() { return qbitPassword; }
     public String stateDatabaseUrl() { return stateDatabaseUrl; }
+    public long selectionTtlSeconds() { return selectionTtlSeconds; }
 }
