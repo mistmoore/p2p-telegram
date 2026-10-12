@@ -12,7 +12,7 @@ import java.util.List;
 import java.util.Map;
 
 @ApplicationScoped
-public class QbitClient implements dev.p2p.application.port.out.TorrentDownloadPort, dev.p2p.application.port.out.DownloadStatusPort {
+public class QbitClient implements dev.p2p.application.port.out.TorrentDownloadPort, dev.p2p.application.port.out.DownloadStatusPort, dev.p2p.application.port.out.TorrentPresencePort {
     private final HttpGateway http;
     private final ApplicationConfiguration configuration;
     private final ObjectMapper mapper;
@@ -51,5 +51,13 @@ public class QbitClient implements dev.p2p.application.port.out.TorrentDownloadP
                 torrent.path("eta").asLong(-1)));
         }
         return List.copyOf(downloads);
+    }
+
+    @Override
+    public boolean hasInfoHash(String infoHash) throws Exception {
+        var response = http.get(configuration.qbitUrl() + "/api/v2/torrents/info?hashes=" + HttpGateway.encode(infoHash), login());
+        JsonNode payload = mapper.readTree(response.body());
+        if (!payload.isArray()) throw new IllegalStateException("Respuesta de qBittorrent no válida");
+        return !payload.isEmpty();
     }
 }

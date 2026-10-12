@@ -76,4 +76,15 @@ class QbitClientTest {
         assertEquals(0.5, downloads.getFirst().progress());
         assertEquals(2048L, downloads.getFirst().downloadSpeed());
     }
+
+    @Test
+    void detectsExistingInfoHash() throws Exception {
+        server.stubFor(post(urlEqualTo("/api/v2/auth/login"))
+            .willReturn(aResponse().withHeader("Set-Cookie", "SID=session").withBody("Ok.")));
+        server.stubFor(com.github.tomakehurst.wiremock.client.WireMock.get(urlEqualTo("/api/v2/torrents/info?hashes=0123"))
+            .withHeader("Cookie", equalTo("SID=session"))
+            .willReturn(aResponse().withHeader("Content-Type", "application/json").withBody("[{\"hash\":\"0123\"}]")));
+
+        assertEquals(true, client.hasInfoHash("0123"));
+    }
 }

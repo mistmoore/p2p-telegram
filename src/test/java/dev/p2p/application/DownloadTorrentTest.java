@@ -11,7 +11,7 @@ class DownloadTorrentTest {
     void delegatesValidMagnetLinks() throws Exception {
         var download = new CapturingDownload();
 
-        new DownloadTorrent(download, new InMemoryState()).download(1L, "magnet:?xt=urn:btih:0123456789abcdef0123456789abcdef01234567");
+        new DownloadTorrent(download, new InMemoryState(), infoHash -> false).download(1L, "magnet:?xt=urn:btih:0123456789abcdef0123456789abcdef01234567");
 
         assertEquals("magnet:?xt=urn:btih:0123456789abcdef0123456789abcdef01234567", download.magnetLink);
     }
@@ -20,7 +20,31 @@ class DownloadTorrentTest {
     void rejectsHttpUrlsBeforeTheDownloadAdapter() {
         var download = new CapturingDownload();
 
-        assertThrows(IllegalArgumentException.class, () -> new DownloadTorrent(download, new InMemoryState()).download(1L, "http://127.0.0.1:8080/admin"));
+        assertThrows(IllegalArgumentException.class, () -> new DownloadTorrent(download, new InMemoryState(), infoHash -> false).download(1L, "http://127.0.0.1:8080/admin"));
+    }
+
+    @Test
+    void retriesAnAmbiguousClaimWhenQbittorrentDoesNotHaveTheInfoHash() throws Exception {
+        var download = new CapturingDownload();
+        var state = new InMemoryState();
+        state.claimDownload(1L);
+
+        boolean submitted = new DownloadTorrent(download, state, infoHash -> false).download(1L, "magnet:?xt=urn:btih:0123456789abcdef0123456789abcdef01234567");
+
+        assertEquals(true, submitted);
+        assertEquals("magnet:?xt=urn:btih:0123456789abcdef0123456789abcdef01234567", download.magnetLink);
+    }
+
+    @Test
+    void doesNotResubmitAnAmbiguousClaimWhenQbittorrentHasTheInfoHash() throws Exception {
+        var download = new CapturingDownload();
+        var state = new InMemoryState();
+        state.claimDownload(1L);
+
+        boolean submitted = new DownloadTorrent(download, state, infoHash -> true).download(1L, "magnet:?xt=urn:btih:0123456789abcdef0123456789abcdef01234567");
+
+        assertEquals(false, submitted);
+        assertEquals(null, download.magnetLink);
     }
 
     private static final class CapturingDownload implements TorrentDownloadPort {
