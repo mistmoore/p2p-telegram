@@ -43,9 +43,11 @@ class JackettTorrentSearchTest {
         var configuration = new ApplicationConfiguration("token", 42L, server.baseUrl(), "secret-key", "http://localhost:8081", "admin", "password");
         var results = new JackettTorrentSearch(new HttpGateway(), configuration).search("ubuntu iso");
 
-        assertEquals(1, results.size());
+        assertEquals(2, results.size());
         assertEquals("Ubuntu ISO", results.getFirst().title());
         assertEquals("magnet:?xt=urn:btih:abc", results.getFirst().link());
+        assertEquals("HTTP torrent", results.get(1).title());
+        assertEquals("https://indexer.example/download/ubuntu.torrent", results.get(1).link());
         server.verify(getRequestedFor(urlPathMatching("/api/v2.0/indexers/all/results/torznab/api")).withQueryParam("q", com.github.tomakehurst.wiremock.client.WireMock.equalTo("ubuntu iso")).withQueryParam("apikey", com.github.tomakehurst.wiremock.client.WireMock.equalTo("secret-key")));
     }
 

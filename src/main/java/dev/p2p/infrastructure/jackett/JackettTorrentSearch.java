@@ -61,7 +61,7 @@ public class JackettTorrentSearch implements TorrentSearchPort {
         try {
             var uri = URI.create(value.trim()).normalize();
             String scheme = uri.getScheme();
-            if (scheme == null || !scheme.equalsIgnoreCase("magnet")) return null;
+            if (scheme == null || !(scheme.equalsIgnoreCase("magnet") || scheme.equalsIgnoreCase("http") || scheme.equalsIgnoreCase("https"))) return null;
             return uri.toString();
         } catch (IllegalArgumentException ignored) {
             return null;
