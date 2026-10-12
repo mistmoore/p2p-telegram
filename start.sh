@@ -9,8 +9,8 @@ die() { printf '[start] ERROR: %s\n' "$*" >&2; exit 1; }
 if [[ "${1:-}" == "setup" ]]; then
   command -v docker >/dev/null 2>&1 || die "Falta Docker."
   docker compose version >/dev/null 2>&1 || die "Falta Docker Compose."
-  command -v python3 >/dev/null 2>&1 || die "Falta python3."
-  exec python3 setup.py
+  command -v java >/dev/null 2>&1 || die "Falta Java 25."
+  exec java --source 25 Setup.java
 fi
 
 for command in docker curl; do
