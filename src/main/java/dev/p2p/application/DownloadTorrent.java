@@ -31,9 +31,7 @@ public class DownloadTorrent {
             if (!updateState.claimDownload(updateId)) throw new IllegalStateException("No se pudo recuperar la descarga pendiente");
         }
         try {
-            if (infoHash == null) torrentDownload.addTorrentFile(link);
-            else torrentDownload.addMagnet(link);
-            return true;
+            return infoHash == null ? torrentDownload.addTorrentFile(link) : torrentDownload.addMagnet(link);
         } catch (Exception exception) {
             updateState.releaseDownloadClaim(updateId);
             throw exception;

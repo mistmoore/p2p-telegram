@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.p2p.infrastructure.config.ApplicationConfiguration;
 import dev.p2p.infrastructure.http.HttpGateway;
+import dev.p2p.infrastructure.http.HttpGatewayException;
 import dev.p2p.domain.DownloadStatus;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -45,18 +46,37 @@ public class QbitClient implements dev.p2p.application.port.out.TorrentDownloadP
     }
 
     @Override
-    public void addMagnet(String magnetLink) throws Exception {
-        var response = http.post(configuration.qbitUrl() + "/api/v2/torrents/add", Map.of("urls", magnetLink), login());
+    public boolean addMagnet(String magnetLink) throws Exception {
+        HttpResponse<String> response;
+        try {
+            response = http.post(configuration.qbitUrl() + "/api/v2/torrents/add", Map.of("urls", magnetLink), login());
+        } catch (HttpGatewayException exception) {
+            if (isDuplicate(exception)) return false;
+            throw exception;
+        }
         if (!accepted(response)) throw new IllegalStateException("qBittorrent rechazó el magnet link");
+        return true;
     }
 
     @Override
-    public void addTorrentFile(String torrentUrl) throws Exception {
+    public boolean addTorrentFile(String torrentUrl) throws Exception {
         validateJackettDownloadUrl(torrentUrl);
         var torrent = http.getBytes(torrentUrl).body();
         if (torrent.length == 0 || torrent.length > MAX_TORRENT_FILE_SIZE) throw new IllegalArgumentException("El archivo torrent tiene un tamaño no válido");
-        var response = http.postMultipart(configuration.qbitUrl() + "/api/v2/torrents/add", "torrents", "download.torrent", torrent, "application/x-bittorrent", login());
+        HttpResponse<String> response;
+        try {
+            response = http.postMultipart(configuration.qbitUrl() + "/api/v2/torrents/add", "torrents", "download.torrent", torrent, "application/x-bittorrent", login());
+        } catch (HttpGatewayException exception) {
+            if (isDuplicate(exception)) return false;
+            throw exception;
+        }
         if (!accepted(response)) throw new IllegalStateException("qBittorrent rechazó el archivo torrent");
+        return true;
+    }
+
+    /** qBittorrent responde 409 Conflict cuando el torrent ya está en la lista. */
+    private static boolean isDuplicate(HttpGatewayException exception) {
+        return Integer.valueOf(409).equals(exception.statusCode());
     }
 
     @Override

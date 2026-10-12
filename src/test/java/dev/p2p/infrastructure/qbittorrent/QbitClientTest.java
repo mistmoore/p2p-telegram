@@ -51,7 +51,7 @@ class QbitClientTest {
             .withFormParam("urls", equalTo("magnet:?xt=urn:btih:abc"))
             .willReturn(aResponse().withBody("Ok.")));
 
-        client.addMagnet("magnet:?xt=urn:btih:abc");
+        assertEquals(true, client.addMagnet("magnet:?xt=urn:btih:abc"));
 
         server.verify(postRequestedFor(urlEqualTo("/api/v2/auth/login")));
         server.verify(postRequestedFor(urlEqualTo("/api/v2/torrents/add")));
@@ -91,7 +91,7 @@ class QbitClientTest {
                 {"added_torrent_ids":["abc"],"failure_count":0,"pending_count":0,"success_count":1}
                 """)));
 
-        client.addTorrentFile(jackett.baseUrl() + "/dl/dontorrent/file.torrent");
+        assertEquals(true, client.addTorrentFile(jackett.baseUrl() + "/dl/dontorrent/file.torrent"));
 
         server.verify(postRequestedFor(urlEqualTo("/api/v2/torrents/add")));
     }
@@ -106,6 +106,30 @@ class QbitClientTest {
                 """)));
 
         assertThrows(IllegalStateException.class, () -> client.addMagnet("magnet:?xt=urn:btih:abc"));
+    }
+
+    @Test
+    void treatsDuplicateMagnetAsAlreadyPresent() throws Exception {
+        server.stubFor(post(urlEqualTo("/api/v2/auth/login"))
+            .willReturn(aResponse().withStatus(204).withHeader("Set-Cookie", "SID=session")));
+        server.stubFor(post(urlEqualTo("/api/v2/torrents/add"))
+            .willReturn(aResponse().withStatus(409).withBody("Conflict")));
+
+        assertEquals(false, client.addMagnet("magnet:?xt=urn:btih:abc"));
+    }
+
+    @Test
+    void treatsDuplicateTorrentFileAsAlreadyPresent() throws Exception {
+        jackett.stubFor(get(urlEqualTo("/dl/dontorrent/file.torrent"))
+            .willReturn(aResponse().withBody("d3:foo3:bare")));
+        server.stubFor(post(urlEqualTo("/api/v2/auth/login"))
+            .willReturn(aResponse().withStatus(204).withHeader("Set-Cookie", "SID=session")));
+        server.stubFor(post(urlEqualTo("/api/v2/torrents/add"))
+            .willReturn(aResponse().withStatus(409).withBody("Conflict")));
+
+        assertEquals(false, client.addTorrentFile(jackett.baseUrl() + "/dl/dontorrent/file.torrent"));
+
+        jackett.verify(getRequestedFor(urlEqualTo("/dl/dontorrent/file.torrent")));
     }
 
     @Test

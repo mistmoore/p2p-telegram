@@ -48,18 +48,32 @@ class DownloadTorrentTest {
         assertEquals(null, download.magnetLink);
     }
 
+    @Test
+    void reportsWhenQbittorrentAlreadyHadTheTorrent() throws Exception {
+        var download = new CapturingDownload();
+        download.added = false;
+
+        boolean submitted = new DownloadTorrent(download, new InMemoryState(), infoHash -> false).download(1L, "http://127.0.0.1:9117/dl/indexer/file.torrent");
+
+        assertEquals(false, submitted);
+        assertEquals("http://127.0.0.1:9117/dl/indexer/file.torrent", download.torrentUrl);
+    }
+
     private static final class CapturingDownload implements TorrentDownloadPort {
         private String magnetLink;
         private String torrentUrl;
+        private boolean added = true;
 
         @Override
-        public void addMagnet(String magnetLink) {
+        public boolean addMagnet(String magnetLink) {
             this.magnetLink = magnetLink;
+            return added;
         }
 
         @Override
-        public void addTorrentFile(String torrentUrl) {
+        public boolean addTorrentFile(String torrentUrl) {
             this.torrentUrl = torrentUrl;
+            return added;
         }
     }
 

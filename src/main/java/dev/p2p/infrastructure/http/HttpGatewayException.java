@@ -13,6 +13,10 @@ public class HttpGatewayException extends RuntimeException {
         this.statusCode = null;
     }
 
+    public Integer statusCode() {
+        return statusCode;
+    }
+
     public boolean isRetryable() {
         return statusCode == null || statusCode == 408 || statusCode == 429 || statusCode >= 500;
     }
