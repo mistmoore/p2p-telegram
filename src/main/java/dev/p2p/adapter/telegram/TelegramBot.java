@@ -3,6 +3,7 @@ package dev.p2p.adapter.telegram;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.p2p.application.DownloadTorrent;
+import dev.p2p.application.ListDownloads;
 import dev.p2p.application.SearchTorrents;
 import dev.p2p.application.port.out.TelegramUpdateStatePort;
 import dev.p2p.domain.TorrentResult;
@@ -14,6 +15,7 @@ import jakarta.inject.Inject;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import org.jboss.logging.Logger;
 
@@ -24,17 +26,19 @@ public class TelegramBot {
     private final ObjectMapper mapper;
     private final SearchTorrents searchTorrents;
     private final DownloadTorrent downloadTorrent;
+    private final ListDownloads listDownloads;
     private final ApplicationConfiguration configuration;
     private final TelegramUpdateStatePort updateState;
     private long offset;
     private final Map<Long, List<TorrentResult>> selections = new HashMap<>();
 
     @Inject
-    public TelegramBot(HttpGateway http, ObjectMapper mapper, SearchTorrents searchTorrents, DownloadTorrent downloadTorrent, ApplicationConfiguration configuration, TelegramUpdateStatePort updateState) {
+    public TelegramBot(HttpGateway http, ObjectMapper mapper, SearchTorrents searchTorrents, DownloadTorrent downloadTorrent, ListDownloads listDownloads, ApplicationConfiguration configuration, TelegramUpdateStatePort updateState) {
         this.http = http;
         this.mapper = mapper;
         this.searchTorrents = searchTorrents;
         this.downloadTorrent = downloadTorrent;
+        this.listDownloads = listDownloads;
         this.configuration = configuration;
         this.updateState = updateState;
         this.offset = updateState.nextOffset();
@@ -109,8 +113,21 @@ public class TelegramBot {
             }
             if (downloadTorrent.download(updateId, results.get(index).link())) send(chat, "Descarga enviada a qBittorrent.");
             else send(chat, "Esta descarga ya fue enviada a qBittorrent.");
+        } else if (input.equals("/descargas")) {
+            var downloads = listDownloads.list();
+            if (downloads.isEmpty()) {
+                send(chat, "No hay descargas activas ni completadas.");
+                return;
+            }
+            var text = new StringBuilder("Descargas:\n");
+            for (var download : downloads.stream().limit(20).toList()) {
+                text.append(truncate(download.name(), 120)).append("\n")
+                    .append(String.format(Locale.ROOT, "%.1f%% · %s · %s · ETA %s\n", download.progress() * 100, download.state(), formatSpeed(download.downloadSpeed()), formatEta(download.etaSeconds())));
+                if (text.length() > 3800) break;
+            }
+            send(chat, text.toString());
         } else if (input.equals("/start") || input.equals("/ayuda")) {
-            send(chat, "Comandos: /buscar texto · /descargar N · /ayuda");
+            send(chat, "Comandos: /buscar texto · /descargar N · /descargas · /ayuda");
         } else {
             send(chat, "Usa /buscar texto para buscar archivos.");
         }
@@ -118,5 +135,14 @@ public class TelegramBot {
 
     private static String truncate(String value, int maxLength) {
         return value.length() <= maxLength ? value : value.substring(0, maxLength - 3) + "...";
+    }
+
+    private static String formatSpeed(long bytesPerSecond) {
+        return String.format(Locale.ROOT, "%.1f KiB/s", bytesPerSecond / 1024.0);
+    }
+
+    private static String formatEta(long seconds) {
+        if (seconds < 0 || seconds >= 8_640_000L) return "?";
+        return "%dh %02dm".formatted(seconds / 3600, (seconds % 3600) / 60);
     }
 }

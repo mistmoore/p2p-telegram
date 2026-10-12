@@ -27,6 +27,12 @@ public class HttpGateway {
         return send(HttpRequest.newBuilder(URI.create(url)).timeout(timeout).GET().build());
     }
 
+    public HttpResponse<String> get(String url, String cookie) throws Exception {
+        var request = HttpRequest.newBuilder(URI.create(url)).timeout(Duration.ofSeconds(12));
+        if (cookie != null) request.header("Cookie", cookie);
+        return send(request.GET().build());
+    }
+
     public HttpResponse<String> post(String url, Map<String, String> values, String cookie) throws Exception {
         var request = HttpRequest.newBuilder(URI.create(url)).timeout(Duration.ofSeconds(12)).header("Content-Type", "application/x-www-form-urlencoded");
         if (cookie != null) request.header("Cookie", cookie);

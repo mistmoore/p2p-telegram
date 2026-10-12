@@ -13,7 +13,7 @@ Quarkus + Jackett (Torznab) + qBittorrent + Telegram. Uso previsto: descargas au
 3. Configura qBittorrent Web UI en el puerto indicado por `QBIT_URL`; restringe el acceso a localhost y usa credenciales propias.
 4. Configura al menos un indexador permitido en Jackett.
 5. Ejecuta `mvn quarkus:dev`.
-6. Abre un chat privado con el bot: `/buscar ubuntu`, luego `/descargar 1`.
+6. Abre un chat privado con el bot: `/buscar ubuntu`, luego `/descargar 1` o consulta `/descargas`.
 7. Comprueba la descarga desde la Web UI de qBittorrent.
 
 ## Notas y limitaciones
