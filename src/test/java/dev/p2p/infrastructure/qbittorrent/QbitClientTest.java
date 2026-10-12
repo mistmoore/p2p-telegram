@@ -2,6 +2,9 @@ package dev.p2p.infrastructure.qbittorrent;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
+import static com.github.tomakehurst.wiremock.client.WireMock.containing;
+import static com.github.tomakehurst.wiremock.client.WireMock.get;
+import static com.github.tomakehurst.wiremock.client.WireMock.getRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.post;
 import static com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
@@ -18,19 +21,23 @@ import org.junit.jupiter.api.Test;
 
 class QbitClientTest {
     private WireMockServer server;
+    private WireMockServer jackett;
     private QbitClient client;
 
     @BeforeEach
     void startServer() {
         server = new WireMockServer(WireMockConfiguration.wireMockConfig().dynamicPort());
         server.start();
-        var configuration = new ApplicationConfiguration("token", 42L, "http://localhost:9117", "key", server.baseUrl(), "admin", "password");
+        jackett = new WireMockServer(WireMockConfiguration.wireMockConfig().dynamicPort());
+        jackett.start();
+        var configuration = new ApplicationConfiguration("token", 42L, jackett.baseUrl(), "key", server.baseUrl(), "admin", "password");
         client = new QbitClient(new HttpGateway(), configuration, new ObjectMapper());
     }
 
     @AfterEach
     void stopServer() {
         server.stop();
+        jackett.stop();
     }
 
     @Test
@@ -57,6 +64,28 @@ class QbitClientTest {
         server.stubFor(post(urlEqualTo("/api/v2/torrents/add")).willReturn(aResponse().withBody("Fails.")));
 
         assertThrows(IllegalStateException.class, () -> client.addMagnet("magnet:?xt=urn:btih:abc"));
+    }
+
+    @Test
+    void downloadsJackettTorrentAndUploadsItToQbittorrent() throws Exception {
+        jackett.stubFor(get(urlEqualTo("/dl/dontorrent/file.torrent"))
+            .willReturn(aResponse().withHeader("Content-Type", "application/x-bittorrent").withBody("d3:foo3:bare")));
+        server.stubFor(post(urlEqualTo("/api/v2/auth/login"))
+            .willReturn(aResponse().withHeader("Set-Cookie", "SID=session").withBody("Ok.")));
+        server.stubFor(post(urlEqualTo("/api/v2/torrents/add"))
+            .withHeader("Cookie", equalTo("SID=session"))
+            .withRequestBody(containing("d3:foo3:bare"))
+            .willReturn(aResponse().withBody("Ok.")));
+
+        client.addTorrentFile(jackett.baseUrl() + "/dl/dontorrent/file.torrent");
+
+        jackett.verify(getRequestedFor(urlEqualTo("/dl/dontorrent/file.torrent")));
+        server.verify(postRequestedFor(urlEqualTo("/api/v2/torrents/add")));
+    }
+
+    @Test
+    void rejectsTorrentFilesOutsideJackett() {
+        assertThrows(IllegalArgumentException.class, () -> client.addTorrentFile("https://example.com/file.torrent"));
     }
 
     @Test

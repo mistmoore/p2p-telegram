@@ -9,7 +9,9 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.Arrays;
 import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
@@ -51,10 +53,39 @@ public class HttpGateway {
         return sendWithRetry(request.GET().build());
     }
 
+    public HttpResponse<byte[]> getBytes(String url) throws Exception {
+        var request = HttpRequest.newBuilder(URI.create(url)).timeout(requestTimeout).GET().build();
+        for (int attempt = 1; ; attempt++) {
+            try {
+                return sendBytes(request);
+            } catch (HttpGatewayException exception) {
+                if (!exception.isRetryable() || attempt == getRetryAttempts) throw exception;
+                try {
+                    Thread.sleep(100L * attempt);
+                } catch (InterruptedException interrupted) {
+                    Thread.currentThread().interrupt();
+                    throw new HttpGatewayException("Reintento HTTP interrumpido", interrupted);
+                }
+            }
+        }
+    }
+
     public HttpResponse<String> post(String url, Map<String, String> values, String cookie) throws Exception {
         var request = HttpRequest.newBuilder(URI.create(url)).timeout(requestTimeout).header("Content-Type", "application/x-www-form-urlencoded");
         if (cookie != null) request.header("Cookie", cookie);
         return send(request.POST(HttpRequest.BodyPublishers.ofString(form(values))).build());
+    }
+
+    public HttpResponse<String> postMultipart(String url, String field, String filename, byte[] content, String contentType, String cookie) throws Exception {
+        String boundary = "----p2p-" + UUID.randomUUID();
+        byte[] prefix = ("--" + boundary + "\r\nContent-Disposition: form-data; name=\"" + field + "\"; filename=\"" + filename + "\"\r\nContent-Type: " + contentType + "\r\n\r\n").getBytes(StandardCharsets.UTF_8);
+        byte[] suffix = ("\r\n--" + boundary + "--\r\n").getBytes(StandardCharsets.UTF_8);
+        byte[] body = Arrays.copyOf(prefix, prefix.length + content.length + suffix.length);
+        System.arraycopy(content, 0, body, prefix.length, content.length);
+        System.arraycopy(suffix, 0, body, prefix.length + content.length, suffix.length);
+        var request = HttpRequest.newBuilder(URI.create(url)).timeout(requestTimeout).header("Content-Type", "multipart/form-data; boundary=" + boundary);
+        if (cookie != null) request.header("Cookie", cookie);
+        return send(request.POST(HttpRequest.BodyPublishers.ofByteArray(body)).build());
     }
 
     private HttpResponse<String> sendWithRetry(HttpRequest request) throws Exception {
@@ -76,6 +107,16 @@ public class HttpGateway {
     private HttpResponse<String> send(HttpRequest request) throws Exception {
         try {
             var response = client.send(request, HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() / 100 != 2) throw new HttpGatewayException(response.statusCode());
+            return response;
+        } catch (java.io.IOException exception) {
+            throw new HttpGatewayException("Error de transporte HTTP", exception);
+        }
+    }
+
+    private HttpResponse<byte[]> sendBytes(HttpRequest request) throws Exception {
+        try {
+            var response = client.send(request, HttpResponse.BodyHandlers.ofByteArray());
             if (response.statusCode() / 100 != 2) throw new HttpGatewayException(response.statusCode());
             return response;
         } catch (java.io.IOException exception) {

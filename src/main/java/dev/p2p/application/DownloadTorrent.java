@@ -22,18 +22,17 @@ public class DownloadTorrent {
         this.torrentPresence = torrentPresence;
     }
 
-    public boolean download(long updateId, String magnetLink) throws Exception {
-        String infoHash = infoHash(magnetLink);
-        if (infoHash == null) {
-            throw new IllegalArgumentException("Solo se admiten magnet links con un infohash BitTorrent");
-        }
+    public boolean download(long updateId, String link) throws Exception {
+        String infoHash = infoHash(link);
+        if (infoHash == null && !isHttpUrl(link)) throw new IllegalArgumentException("Solo se admiten magnet links o archivos torrent de Jackett");
         if (!updateState.claimDownload(updateId)) {
-            if (torrentPresence.hasInfoHash(infoHash)) return false;
+            if (infoHash == null || torrentPresence.hasInfoHash(infoHash)) return false;
             updateState.releaseDownloadClaim(updateId);
             if (!updateState.claimDownload(updateId)) throw new IllegalStateException("No se pudo recuperar la descarga pendiente");
         }
         try {
-            torrentDownload.addMagnet(magnetLink);
+            if (infoHash == null) torrentDownload.addTorrentFile(link);
+            else torrentDownload.addMagnet(link);
             return true;
         } catch (Exception exception) {
             updateState.releaseDownloadClaim(updateId);
@@ -51,5 +50,14 @@ public class DownloadTorrent {
             if (value.regionMatches(true, 0, "xt=urn:btih:", 0, 12)) return value.substring(12);
         }
         return null;
+    }
+
+    private static boolean isHttpUrl(String link) {
+        try {
+            String scheme = URI.create(link).getScheme();
+            return "http".equalsIgnoreCase(scheme) || "https".equalsIgnoreCase(scheme);
+        } catch (IllegalArgumentException ignored) {
+            return false;
+        }
     }
 }

@@ -1,7 +1,6 @@
 package dev.p2p.application;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import dev.p2p.application.port.out.TorrentDownloadPort;
 import dev.p2p.application.port.out.TelegramUpdateStatePort;
 import org.junit.jupiter.api.Test;
@@ -17,10 +16,12 @@ class DownloadTorrentTest {
     }
 
     @Test
-    void rejectsHttpUrlsBeforeTheDownloadAdapter() {
+    void delegatesTorrentUrlsToTheDownloadAdapter() throws Exception {
         var download = new CapturingDownload();
 
-        assertThrows(IllegalArgumentException.class, () -> new DownloadTorrent(download, new InMemoryState(), infoHash -> false).download(1L, "http://127.0.0.1:8080/admin"));
+        new DownloadTorrent(download, new InMemoryState(), infoHash -> false).download(1L, "http://127.0.0.1:9117/dl/indexer/file.torrent");
+
+        assertEquals("http://127.0.0.1:9117/dl/indexer/file.torrent", download.torrentUrl);
     }
 
     @Test
@@ -49,10 +50,16 @@ class DownloadTorrentTest {
 
     private static final class CapturingDownload implements TorrentDownloadPort {
         private String magnetLink;
+        private String torrentUrl;
 
         @Override
         public void addMagnet(String magnetLink) {
             this.magnetLink = magnetLink;
+        }
+
+        @Override
+        public void addTorrentFile(String torrentUrl) {
+            this.torrentUrl = torrentUrl;
         }
     }
 
