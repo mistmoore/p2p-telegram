@@ -43,3 +43,25 @@ services:
       timeout: 5s
       retries: 10
       start_period: 30s
+
+  bot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: p2p-telegram-bot:local
+    env_file:
+      - .env
+    environment:
+      JACKETT_URL: http://jackett:9117
+      QBIT_URL: http://qbittorrent:8081
+      STATE_DB_URL: jdbc:sqlite:/app/state/p2p-telegram.db
+    volumes:
+      - ./data/bot:/app/state
+    depends_on:
+      jackett:
+        condition: service_healthy
+      qbittorrent:
+        condition: service_healthy
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8080:8080"
