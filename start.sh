@@ -6,7 +6,14 @@ cd "$(dirname "${BASH_SOURCE[0]}")"
 log() { printf '[start] %s\n' "$*"; }
 die() { printf '[start] ERROR: %s\n' "$*" >&2; exit 1; }
 
-for command in docker mvn java curl; do
+if [[ "${1:-}" == "setup" ]]; then
+  command -v docker >/dev/null 2>&1 || die "Falta Docker."
+  docker compose version >/dev/null 2>&1 || die "Falta Docker Compose."
+  command -v java >/dev/null 2>&1 || die "Falta Java 25."
+  exec java --source 25 Setup.java
+fi
+
+for command in docker curl; do
   command -v "$command" >/dev/null 2>&1 || die "Falta '$command' en PATH."
 done
 
@@ -53,7 +60,7 @@ case "${1:-start}" in
     exec docker compose logs -f --tail=100
     ;;
   *)
-    die "Uso: ./start.sh [start|infra|stop|status|logs]"
+    die "Uso: ./start.sh [start|setup|infra|stop|status|logs]"
     ;;
 esac
 
@@ -78,5 +85,8 @@ wait_for_http qbittorrent "${QBIT_URL%/}/api/v2/app/version"
 [[ -n "${JACKETT_API_KEY:-}" ]] || die "Configura JACKETT_API_KEY en .env después de inicializar Jackett."
 [[ -n "${QBIT_PASSWORD:-}" ]] || die "Configura QBIT_PASSWORD en .env después de inicializar qBittorrent."
 
+for command in mvn java; do
+  command -v "$command" >/dev/null 2>&1 || die "Falta $command para ejecutar Quarkus."
+done
 log "Iniciando Quarkus en modo desarrollo"
 exec mvn quarkus:dev
