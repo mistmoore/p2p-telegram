@@ -90,7 +90,7 @@ def configure_qbit(env):
         print("qBittorrent: existing credentials verified")
         return
     logs = run("docker", "compose", "logs", "--no-color", "qbittorrent")
-    matches = re.findall(r"temporary password is provided for this session:\\s*(\\S+)", logs, re.I)
+    matches = re.findall(r"temporary password is provided for this session:\s*(\S+)", logs, re.I)
     if not matches:
         raise RuntimeError("Cannot find qBittorrent temporary password in Compose logs. "
                            "If the Web UI was already configured, set QBIT_PASSWORD in .env.")
