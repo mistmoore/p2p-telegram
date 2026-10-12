@@ -9,10 +9,10 @@ Quarkus + Jackett (Torznab) + qBittorrent + Telegram. Uso previsto: descargas au
 
 ## Arranque
 1. Copia `.env.example` a `.env` y completa los valores. **No subas `.env` a Git.**
-2. Exporta las variables: `set -a; source .env; set +a` (archivo de confianza, sin espacios alrededor de `=`).
-3. Configura qBittorrent Web UI en el puerto indicado por `QBIT_URL`; restringe el acceso a localhost y usa credenciales propias.
-4. Configura al menos un indexador permitido en Jackett.
-5. Ejecuta `mvn quarkus:dev`.
+2. Configura qBittorrent Web UI en el puerto indicado por `QBIT_URL`; restringe el acceso a localhost y usa credenciales propias.
+3. Configura al menos un indexador permitido en Jackett.
+4. Ejecuta `./start.sh`. El script inicia los contenedores `jackett` y `qbittorrent`, carga `.env` y arranca Quarkus.
+5. También puedes iniciar el backend manualmente con `set -a; source .env; set +a; mvn quarkus:dev`.
 6. Abre un chat privado con el bot: `/buscar ubuntu`, luego `/descargar 1` o consulta `/descargas`.
 7. Comprueba la descarga desde la Web UI de qBittorrent.
 
