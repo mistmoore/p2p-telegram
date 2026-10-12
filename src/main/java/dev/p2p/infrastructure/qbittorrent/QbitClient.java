@@ -28,7 +28,7 @@ public class QbitClient implements dev.p2p.application.port.out.TorrentDownloadP
 
     private String login() throws Exception {
         var response = http.post(configuration.qbitUrl() + "/api/v2/auth/login", Map.of("username", configuration.qbitUser(), "password", configuration.qbitPassword()), null);
-        if (!response.body().trim().equals("Ok.")) throw new IllegalStateException("Login qBittorrent rechazado");
+        if (response.statusCode() != 204 && !response.body().trim().equals("Ok.")) throw new IllegalStateException("Login qBittorrent rechazado");
         return response.headers().firstValue("set-cookie").orElseThrow().split(";", 2)[0];
     }
 

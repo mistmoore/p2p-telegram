@@ -58,6 +58,19 @@ class QbitClientTest {
     }
 
     @Test
+    void acceptsNoContentLoginFromRecentQbittorrentVersions() throws Exception {
+        server.stubFor(post(urlEqualTo("/api/v2/auth/login"))
+            .willReturn(aResponse().withStatus(204).withHeader("Set-Cookie", "SID=session; HttpOnly")));
+        server.stubFor(post(urlEqualTo("/api/v2/torrents/add"))
+            .withHeader("Cookie", equalTo("SID=session"))
+            .willReturn(aResponse().withBody("Ok.")));
+
+        client.addMagnet("magnet:?xt=urn:btih:abc");
+
+        server.verify(postRequestedFor(urlEqualTo("/api/v2/torrents/add")));
+    }
+
+    @Test
     void rejectsQbittorrentFailureResponse() {
         server.stubFor(post(urlEqualTo("/api/v2/auth/login"))
             .willReturn(aResponse().withHeader("Set-Cookie", "SID=session").withBody("Ok.")));
