@@ -16,6 +16,7 @@ public class ApplicationConfiguration {
     private final String qbitUrl;
     private final String qbitUser;
     private final String qbitPassword;
+    private final String stateDatabaseUrl;
 
     @Inject
     public ApplicationConfiguration(
@@ -25,7 +26,8 @@ public class ApplicationConfiguration {
         @ConfigProperty(name = "app.jackett.key", defaultValue = "") String jackettApiKey,
         @ConfigProperty(name = "app.qbit.url", defaultValue = "http://localhost:8081") String qbitUrl,
         @ConfigProperty(name = "app.qbit.user", defaultValue = "admin") String qbitUser,
-        @ConfigProperty(name = "app.qbit.password", defaultValue = "") String qbitPassword) {
+        @ConfigProperty(name = "app.qbit.password", defaultValue = "") String qbitPassword,
+        @ConfigProperty(name = "app.state.db-url", defaultValue = "jdbc:sqlite:p2p-telegram.db") String stateDatabaseUrl) {
         validate(telegramToken, telegramAllowedUser, jackettUrl, jackettApiKey, qbitUrl, qbitUser, qbitPassword);
         this.telegramToken = telegramToken;
         this.telegramAllowedUser = telegramAllowedUser;
@@ -34,6 +36,11 @@ public class ApplicationConfiguration {
         this.qbitUrl = qbitUrl;
         this.qbitUser = qbitUser;
         this.qbitPassword = qbitPassword;
+        this.stateDatabaseUrl = stateDatabaseUrl;
+    }
+
+    public ApplicationConfiguration(String telegramToken, long telegramAllowedUser, String jackettUrl, String jackettApiKey, String qbitUrl, String qbitUser, String qbitPassword) {
+        this(telegramToken, telegramAllowedUser, jackettUrl, jackettApiKey, qbitUrl, qbitUser, qbitPassword, "jdbc:sqlite::memory:");
     }
 
     static void validate(String token, long allowedUser, String jackettUrl, String jackettKey, String qbitUrl, String qbitUser, String qbitPassword) {
@@ -60,4 +67,5 @@ public class ApplicationConfiguration {
     public String qbitUrl() { return qbitUrl; }
     public String qbitUser() { return qbitUser; }
     public String qbitPassword() { return qbitPassword; }
+    public String stateDatabaseUrl() { return stateDatabaseUrl; }
 }

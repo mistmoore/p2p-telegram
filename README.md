@@ -19,8 +19,8 @@ Quarkus + Jackett (Torznab) + qBittorrent + Telegram. Uso previsto: descargas au
 ## Notas y limitaciones
 - El MVP utiliza polling, por lo que no requiere webhook ni IP pública.
 - No incluye `/descargas` todavía: se consulta el estado desde qBittorrent.
-- La selección se guarda en memoria: se pierde al reiniciar Quarkus.
-- No incluye reintentos, paginación, persistencia ni verificación de disponibilidad.
+- La selección se guarda en memoria: se pierde al reiniciar Quarkus. El offset de Telegram y las descargas enviadas se guardan en SQLite mediante `STATE_DB_URL`.
+- No incluye reintentos, paginación ni verificación de disponibilidad.
 - La API de Jackett puede devolver URLs de descarga HTTP de torrents, no solo magnet links.
 - La Web UI de qBittorrent debe estar protegida; no la expongas a Internet.
 - La validación de URLs es básica. No despliegues este MVP como servicio multiusuario ni expuesto públicamente sin restringir destinos HTTP y revisar SSRF.

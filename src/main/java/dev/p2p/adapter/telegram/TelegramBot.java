@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.p2p.application.DownloadTorrent;
 import dev.p2p.application.SearchTorrents;
+import dev.p2p.application.port.out.TelegramUpdateStatePort;
 import dev.p2p.domain.TorrentResult;
 import dev.p2p.infrastructure.config.ApplicationConfiguration;
 import dev.p2p.infrastructure.http.HttpGateway;
@@ -24,16 +25,19 @@ public class TelegramBot {
     private final SearchTorrents searchTorrents;
     private final DownloadTorrent downloadTorrent;
     private final ApplicationConfiguration configuration;
+    private final TelegramUpdateStatePort updateState;
     private long offset;
     private final Map<Long, List<TorrentResult>> selections = new HashMap<>();
 
     @Inject
-    public TelegramBot(HttpGateway http, ObjectMapper mapper, SearchTorrents searchTorrents, DownloadTorrent downloadTorrent, ApplicationConfiguration configuration) {
+    public TelegramBot(HttpGateway http, ObjectMapper mapper, SearchTorrents searchTorrents, DownloadTorrent downloadTorrent, ApplicationConfiguration configuration, TelegramUpdateStatePort updateState) {
         this.http = http;
         this.mapper = mapper;
         this.searchTorrents = searchTorrents;
         this.downloadTorrent = downloadTorrent;
         this.configuration = configuration;
+        this.updateState = updateState;
+        this.offset = updateState.nextOffset();
     }
 
     private String api(String method) { return "https://api.telegram.org/bot" + configuration.telegramToken() + "/" + method; }
@@ -49,17 +53,25 @@ public class TelegramBot {
             var payload = mapper.readTree(response.body());
             if (!payload.path("ok").asBoolean()) throw new IllegalStateException("Telegram rechazó getUpdates");
             for (JsonNode update : payload.path("result")) {
-                offset = Math.max(offset, update.path("update_id").asLong() + 1);
+                long updateId = update.path("update_id").asLong();
                 JsonNode message = update.path("message");
-                if (message.isMissingNode()) continue;
+                if (message.isMissingNode()) {
+                    acknowledge(updateId);
+                    continue;
+                }
                 long user = message.path("from").path("id").asLong();
-                if (user != configuration.telegramAllowedUser() || !"private".equals(message.path("chat").path("type").asText())) continue;
+                if (user != configuration.telegramAllowedUser() || !"private".equals(message.path("chat").path("type").asText())) {
+                    acknowledge(updateId);
+                    continue;
+                }
                 long chat = message.path("chat").path("id").asLong();
                 try {
-                    handle(chat, message.path("text").asText("").trim());
+                    handle(chat, updateId, message.path("text").asText("").trim());
+                    acknowledge(updateId);
                 } catch (Exception exception) {
                     LOG.warn("Bot command failed", exception);
                     send(chat, "No se pudo completar la operación. Revisa la configuración y los logs.");
+                    return;
                 }
             }
         } catch (Exception exception) {
@@ -67,7 +79,12 @@ public class TelegramBot {
         }
     }
 
-    private void handle(long chat, String input) throws Exception {
+    private void acknowledge(long updateId) {
+        offset = Math.max(offset, updateId + 1);
+        updateState.advanceOffset(offset);
+    }
+
+    private void handle(long chat, long updateId, String input) throws Exception {
         if (input.startsWith("/buscar ")) {
             String query = input.substring(8).trim();
             if (query.isBlank() || query.length() > 120) {
@@ -90,8 +107,8 @@ public class TelegramBot {
                 send(chat, "Número inválido. Usa /buscar primero.");
                 return;
             }
-            downloadTorrent.download(results.get(index).link());
-            send(chat, "Descarga enviada a qBittorrent.");
+            if (downloadTorrent.download(updateId, results.get(index).link())) send(chat, "Descarga enviada a qBittorrent.");
+            else send(chat, "Esta descarga ya fue enviada a qBittorrent.");
         } else if (input.equals("/start") || input.equals("/ayuda")) {
             send(chat, "Comandos: /buscar texto · /descargar N · /ayuda");
         } else {
