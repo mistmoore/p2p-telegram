@@ -76,7 +76,7 @@ public class TelegramBot {
                 } catch (Exception exception) {
                     LOG.warn("Bot command failed", exception);
                     send(chat, "No se pudo completar la operación. Revisa la configuración y los logs.");
-                    return;
+                    acknowledge(updateId);
                 }
             }
         } catch (Exception exception) {

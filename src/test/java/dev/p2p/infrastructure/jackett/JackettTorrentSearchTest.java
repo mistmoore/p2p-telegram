@@ -37,6 +37,7 @@ class JackettTorrentSearchTest {
                   <item><title> Ubuntu\n  ISO </title><link>magnet:?xt=urn:btih:abc</link></item>
                   <item><title>Duplicate</title><link>magnet:?xt=urn:btih:abc</link></item>
                   <item><title>Invalid</title><link>file:///tmp/torrent</link></item>
+                  <item><title>HTTP torrent</title><link>https://indexer.example/download/ubuntu.torrent</link></item>
                 </channel></rss>""")));
 
         var configuration = new ApplicationConfiguration("token", 42L, server.baseUrl(), "secret-key", "http://localhost:8081", "admin", "password");
