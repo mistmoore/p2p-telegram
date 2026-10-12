@@ -15,7 +15,7 @@ Quarkus + Jackett (Torznab) + qBittorrent + Telegram. Solo descargas autorizadas
 4. Ejecuta `./start.sh` para comprobar ambos servicios e iniciar Quarkus.
 5. En un chat privado con el bot, prueba `/buscar ubuntu`, `/descargar 1` y `/descargas`.
 
-**Si ya usabas qBittorrent** con una contraseña propia, introduce primero `QBIT_PASSWORD` en `.env`: el setup la verificará en vez de sobrescribirla. Si la API key de Jackett no se encuentra, el script falla sin inventar una. El setup no instala Docker, Java ni Maven.
+**Si ya usabas qBittorrent** con una contraseña propia, introduce primero `QBIT_PASSWORD` en `.env`: el setup la verificará en vez de sobrescribirla. Si la API key de Jackett no se encuentra, el script falla sin inventar una. El setup no instala Docker ni Java. Usa `java --source 25 Setup.java`, sin Python ni dependencias adicionales.
 
 **Importante:** no copies las credenciales de ejemplo a entornos públicos. No subas `.env` a Git.
 
@@ -47,7 +47,7 @@ Quarkus + Jackett (Torznab) + qBittorrent + Telegram. Solo descargas autorizadas
 - La integración completa Telegram → Jackett → qBittorrent requiere validación en tu equipo.
 
 ## Raspberry Pi
-- Recomendado Raspberry Pi 4/5 con sistema operativo **64 bits** y Docker Engine + Compose instalados. El script `setup` requiere Python 3 (biblioteca estándar).
+- Recomendado Raspberry Pi 4/5 con sistema operativo **64 bits** y Docker Engine + Compose instalados. El script `setup` utiliza Java 25 (sin Python).
 - Antes de desplegar el backend en la Pi, instala JDK 25 y Maven 3.9+, o prepara una imagen de Quarkus en contenedor en una fase posterior. Esta PR automatiza **la infraestructura y las credenciales**, no el aprovisionamiento completo del sistema operativo.
 - Para usar un SSD, define `DOWNLOADS_DIR=/ruta/absoluta/del/ssd` en `.env` **antes** de `./start.sh setup`.
 - No expongas Jackett/qBittorrent fuera de localhost sin un mecanismo seguro de acceso remoto (por ejemplo, túnel SSH).
