@@ -8,7 +8,7 @@ import java.time.Duration;
 import java.util.*;
 import java.util.regex.*;
 
-/** One-time local bootstrap, JDK 25 only. No Python or extra libraries. */
+/** One-time local bootstrap, JDK 25 only. Runs in a disposable container; reads qBittorrent logs from stdin. */
 class Setup {
     private static final Path ENV = Path.of(".env");
     private static final Path JACKETT_CONFIG = Path.of("data/jackett/Jackett/ServerConfig.json");
@@ -22,7 +22,6 @@ class Setup {
         try {
             if (!Files.exists(ENV)) Files.copy(Path.of(".env.example"), ENV);
             restrictEnv();
-            run("docker", "compose", "up", "-d");
             await("http://127.0.0.1:9117/UI/Dashboard");
             await("http://127.0.0.1:8081/api/v2/app/version");
 
@@ -38,7 +37,7 @@ class Setup {
                 login(existing);
                 System.out.println("[setup] qBittorrent: contraseña existente verificada");
             } else {
-                String logs = capture("docker", "compose", "logs", "--no-color", "qbittorrent");
+                String logs = new String(System.in.readAllBytes(), StandardCharsets.UTF_8);
                 Matcher password = Pattern.compile("temporary password is provided for this session:\\s*(\\S+)",
                         Pattern.CASE_INSENSITIVE).matcher(logs);
                 String temporary = null;
